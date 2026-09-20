@@ -37,7 +37,9 @@ How MosaicShell handles what it receives is described by MosaicShell, not by thi
 - `nativeMessaging` lets Grout talk to MosaicShell, and only to the host MosaicShell registers for this purpose.
 - `alarms` wakes Grout's background worker every 30 seconds so it can reconnect to MosaicShell after either one was
   restarted.
-- Grout asks for no host permissions. Its scripts are declared for the four sites above and run nowhere else.
+- Grout declares no separate `host_permissions` entry. Its two content scripts are declared for exactly the four HTTPS
+  sites above and run only in the top frame. This is host access under browser-store terminology, limited to those sites;
+  Grout cannot read arbitrary tab addresses or pages on any other site.
 
 ## Sharing and selling
 
