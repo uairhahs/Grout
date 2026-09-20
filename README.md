@@ -61,6 +61,8 @@ The popup adds no permission and shows only what Grout already sends to MosaicSh
 
 ## Privacy
 
+The full policy is [PRIVACY.md](PRIVACY.md). In short:
+
 - Nothing is sent for a tab that plays nothing.
 - Nothing leaves your computer: the only connection is the local native messaging port to MosaicShell.
 - Permissions are `nativeMessaging` and `alarms` (a keepalive so the worker reconnects). There are no host
