@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Grout</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body data-tone="wait">
+    <header>
+      <img src="icons/icon-32.png" alt="" width="24" height="24" />
+      <h1>Grout</h1>
+    </header>
+
+    <main>
+      <p class="heading"><span class="dot" aria-hidden="true"></span><span id="heading">Starting</span></p>
+      <p id="body" class="body">Grout is connecting to MosaicShell.</p>
+
+      <div id="track" class="track" hidden>
+        <p id="track-title" class="track-title"></p>
+        <p class="track-line"><span id="track-artist"></span> <span id="track-state" class="state"></span></p>
+      </div>
+    </main>
+
+    <footer>
+      <span>Extension ID</span>
+      <code id="extension-id"></code>
+    </footer>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
