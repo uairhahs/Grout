@@ -32,6 +32,12 @@ describe("manifest", () => {
     assert.equal(idFromKey(manifest.key), "aaffcapodpfecchmelidkkhgiaamijpe");
   });
 
+  it("fits what the browser stores accept: a name up to 75 characters and a description up to 132", () => {
+    assert.ok(manifest.name.length <= 75, `the name is ${manifest.name.length} characters`);
+    assert.ok(manifest.description.length <= 132, `the description is ${manifest.description.length} characters; the Chrome Web Store refuses more than 132`);
+    assert.ok(manifest.short_name === undefined || manifest.short_name.length <= 12);
+  });
+
   it("asks for as little as it can: the native host and a keepalive alarm, nothing else", () => {
     assert.deepEqual([...manifest.permissions].sort(), ["alarms", "nativeMessaging"]);
     assert.equal(manifest.host_permissions, undefined, "no host permissions: it cannot read pages or tab addresses itself");
