@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       publish:
-        description: Publish a GitHub release. Untick to build, sign and verify the package and keep it as a workflow artifact only.
+        description: Publish a GitHub release. Untick to build and package only and keep the package as a workflow artifact.
         type: boolean
         default: true
 
@@ -20,7 +20,7 @@ defaults:
 
 jobs:
   build-and-release:
-    name: Build CRX and publish release
+    name: Build package and publish release
     runs-on: ubuntu-latest
 
     steps:
@@ -69,48 +69,13 @@ jobs:
           TAG: ${{ steps.tag.outputs.name }}
         run: (cd dist && zip -r -X "../Grout-$TAG.zip" .)
 
-      - name: Setup Chrome
-        id: chrome
-        uses: browser-actions/setup-chrome@48ad923757ca74d66703209fe939badbdf80f2f4 # v2.2.0
-        with:
-          chrome-version: stable
-
-      - name: Sign CRX
-        env:
-          EXTENSION_PRIVATE_KEY: ${{ secrets.EXTENSION_PRIVATE_KEY }}
-          CHROME: ${{ steps.chrome.outputs.chrome-path }}
-          TAG: ${{ steps.tag.outputs.name }}
-        run: |
-          if [ -z "$EXTENSION_PRIVATE_KEY" ]; then
-            echo "::error::The EXTENSION_PRIVATE_KEY secret is not set. It must hold the PEM private key that matches the public key in extension/manifest.json."
-            exit 1
-          fi
-
-          # The key lives outside the workspace, readable only by this job, and is removed however the step ends.
-          key="$RUNNER_TEMP/extension.pem"
-          trap 'rm -f "$key"' EXIT
-          (umask 077 && printf '%s\n' "$EXTENSION_PRIVATE_KEY" > "$key")
-
-          # The browser's own packer writes dist.crx beside dist. Try it without a display first, then under a virtual one.
-          rm -f dist.crx
-          pack=("$CHROME" --no-sandbox --disable-gpu --user-data-dir="$RUNNER_TEMP/pack-profile" --no-first-run \
-                --pack-extension="$PWD/dist" --pack-extension-key="$key")
-          "${pack[@]}" --headless || true
-          [ -f dist.crx ] || xvfb-run -a "${pack[@]}" || true
-          [ -f dist.crx ] || { echo "::error::Chrome did not produce dist.crx"; exit 1; }
-
-          # Refuse to publish a package signed with a key that does not match the manifest.
-          node scripts/verify-crx.mjs dist.crx dist/manifest.json
-          mv dist.crx "Grout-$TAG.crx"
-
       - name: Compute release checksums
         env:
           TAG: ${{ steps.tag.outputs.name }}
         run: |
-          # Stable names beside the versioned ones, so a link to the latest release never needs the version in it.
-          cp "Grout-$TAG.crx" Grout.crx
+          # A stable name beside the versioned one, so a link to the latest release never needs the version in it.
           cp "Grout-$TAG.zip" Grout.zip
-          sha256sum "Grout-$TAG.crx" "Grout-$TAG.zip" Grout.crx Grout.zip > SHA256SUMS.txt
+          sha256sum "Grout-$TAG.zip" Grout.zip > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
       - name: Keep the package as a workflow artifact
@@ -118,7 +83,6 @@ jobs:
         with:
           name: Grout-${{ steps.tag.outputs.name }}
           path: |
-            Grout-${{ steps.tag.outputs.name }}.crx
             Grout-${{ steps.tag.outputs.name }}.zip
             SHA256SUMS.txt
           if-no-files-found: error
@@ -129,7 +93,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.tag.outputs.name }}
         run: |
-          id="$(node -e 'import("./scripts/verify-crx.mjs").then((m) => console.log(m.idFromKey(require("./dist/manifest.json").key)))')"
+          id="$(node scripts/extension-id.mjs dist/manifest.json)"
 
           cat > notes.md <<EOF
           ## Install
@@ -139,15 +103,13 @@ jobs:
           2. Open \`edge://extensions\` (or \`chrome://extensions\`), turn on Developer mode, choose **Load unpacked** and pick the unzipped folder.
           3. Reload any tab that was already playing.
 
-          **Grout-$TAG.crx** is the same package, signed. Browsers can refuse to install a \`.crx\` from outside their stores unless it is delivered by policy, so the zip is the reliable route.
-
           Extension ID: \`$id\`
 
           ## Verify
           **SHA256SUMS.txt** lists the SHA-256 of every asset. To check by hand: \`sha256sum -c SHA256SUMS.txt\`.
           EOF
 
-          gh release create "$TAG" "Grout-$TAG.crx" "Grout-$TAG.zip" Grout.crx Grout.zip SHA256SUMS.txt \
+          gh release create "$TAG" "Grout-$TAG.zip" Grout.zip SHA256SUMS.txt \
             --title "Grout $TAG" \
             --notes-file notes.md \
             --prerelease \

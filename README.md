@@ -45,6 +45,20 @@ pressed and the buttons are not offered for that moment: a button that is alread
 
 Other sites report what is playing and nothing more, until their buttons have been measured.
 
+## The toolbar popup
+
+Click Grout's icon to see whether it is working. The dot says how the link to MosaicShell is doing:
+
+- **Green, connected.** MosaicShell answered. If the tab you are on is playing, the popup shows what Grout is reporting
+  for it.
+- **Blue, waiting.** MosaicShell is not running. Start it; Grout connects by itself and keeps trying.
+- **Amber, needs you.** Either MosaicShell has not registered Grout's connection yet (start MosaicShell once), or it
+  does not trust this copy because the extension ID is not the one it allows (install Grout from a release, or update
+  MosaicShell). The popup shows the extension ID for exactly this case, and the icon carries a `!` badge until it is
+  fixed.
+
+The popup adds no permission and shows only what Grout already sends to MosaicShell on your own computer.
+
 ## Privacy
 
 - Nothing is sent for a tab that plays nothing.
@@ -103,26 +117,31 @@ git switch -c feature/<name>
 ## Release
 
 Every push to `main` runs `.github/workflows/release.yml`, the same way MosaicShell's release workflow does. It
-typechecks and tests the extension, builds it, signs a CRX, and publishes a GitHub release with:
+typechecks and tests the extension, builds it, and publishes a GitHub release with:
 
-- `Grout-<version>.zip`, the package to load unpacked, and `Grout-<version>.crx`, the same package signed;
-- `Grout.zip` and `Grout.crx`, the same files under names that never change;
+- `Grout-<version>.zip`, the package to load unpacked;
+- `Grout.zip`, the same file under a name that never changes;
 - `SHA256SUMS.txt`.
+
+There is no `.crx`. Edge and Chrome install a `.crx` only if their own store has signed it, so one signed with Grout's
+own key is refused with `Package is invalid: 'CRX_REQUIRED_PROOF_MISSING'` however valid it is, and only enterprise
+policy could deploy one, which is not what Grout is for. To install Grout by hand use the zip and Load unpacked; the
+browser then shows a developer-mode notice when it starts. Once Grout is listed in the Edge Add-ons or Chrome Web
+Store, that listing is the one-click route, and the store's extension ID must then be added to MosaicShell's
+`AllowedExtensionIds`.
 
 **Versions** follow MosaicShell's date-build scheme, `yyyy.M.d-b{run_number}` (UTC date, no zero padding), which is
 also the release tag. A browser's manifest `version` accepts only dot-separated integers, so the packaged manifest
 gets `version` `yyyy.M.d.{run_number}` for the browser to compare and `version_name` `yyyy.M.d-b{run_number}` for
 people to read. The source manifest is never edited. See `scripts/version.mjs`.
 
-**Signing.** The repository needs an Actions secret named `EXTENSION_PRIVATE_KEY` holding the PEM private key that
-matches the public `key` in `extension/manifest.json`. That key fixes the extension ID, which MosaicShell's native
-host allows, so it must never change and must never be committed (`*.pem` and `*.crx` are ignored). Before anything is
-published the workflow reads the ID out of the signed CRX and fails unless it equals the ID derived from the manifest
-key (`scripts/verify-crx.mjs`), so a missing or wrong secret stops the run and does not ship a package MosaicShell
-would refuse. Back the key up: losing it means a new extension ID and a change in MosaicShell.
+**The extension ID** is fixed by the public `key` in `extension/manifest.json`. MosaicShell's native host allows exactly
+that ID, so the key must never change. Nothing needs the matching private key: releases are plain zips and the stores
+sign their own packages. `scripts/extension-id.mjs` derives the ID from the manifest, the tests check it, and the
+release notes state it.
 
-**Trying it without publishing.** Run the workflow by hand from the Actions tab and untick `publish`. It builds, signs and
-verifies the package and keeps it as a workflow artifact only.
+**Trying it without publishing.** Run the workflow by hand from the Actions tab and untick `publish`. It builds and
+packages the extension and keeps the zip as a workflow artifact only.
 
 ## Branding
 

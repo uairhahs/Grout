@@ -20,6 +20,25 @@ export function detectBrowser(nav) {
 const isHttps = (origin) => typeof origin === "string" && origin.startsWith("https://");
 const text = (value) => (typeof value === "string" ? value : "");
 
+/** How the link to MosaicShell is doing. The toolbar popup shows it, and the two that need the user to act get a badge. */
+const NEEDS_ACTION = new Set(["unavailable", "refused"]);
+const LINK_TITLES = {
+  starting: "Grout: starting",
+  waiting: "Grout: waiting for MosaicShell",
+  connected: "Grout: connected to MosaicShell",
+  unavailable: "Grout: MosaicShell has not set Grout up",
+  refused: "Grout: MosaicShell does not trust this copy of Grout",
+};
+/** The amber of MosaicShell's palette: attention, not alarm. */
+const BADGE_COLOR = "#B48331";
+
+/** What a browser's reason for closing the native port means. Anything else is the relay or MosaicShell simply not being there yet. */
+export function linkFor(reason) {
+  if (/not found/i.test(reason)) return "unavailable";
+  if (/forbidden|not allowed/i.test(reason)) return "refused";
+  return "waiting";
+}
+
 export function createBridge({
   chrome,
   version,
@@ -37,6 +56,34 @@ export function createBridge({
   let retryTimer = null;
   let pingTimer = null;
   let attempt = 0;
+  let link = "starting";
+
+  function setLink(next) {
+    if (next === link) return;
+    link = next;
+
+    const action = chrome.action;
+    if (!action) return;
+    const ignore = () => {}; // the button may not be ready yet; the next change tries again
+    action.setBadgeText({ text: NEEDS_ACTION.has(link) ? "!" : "" })?.catch?.(ignore);
+    if (NEEDS_ACTION.has(link)) action.setBadgeBackgroundColor({ color: BADGE_COLOR })?.catch?.(ignore);
+    action.setTitle({ title: LINK_TITLES[link] })?.catch?.(ignore);
+  }
+
+  /** What the toolbar popup shows: the state of the link, our ID (the one MosaicShell must allow) and what each tab reports. */
+  function status() {
+    return {
+      state: link,
+      extensionId: chrome.runtime.id,
+      sessions: [...sessions].map(([tabId, entry]) => ({
+        tabId,
+        origin: entry.origin,
+        title: text(entry.snapshot.title),
+        artist: text(entry.snapshot.artist),
+        playbackState: entry.snapshot.playbackState,
+      })),
+    };
+  }
 
   function post(message) {
     try {
@@ -106,13 +153,15 @@ export function createBridge({
   }
 
   function onDisconnect(closed) {
-    // Reading lastError marks it as handled; otherwise the browser logs an unchecked runtime error.
-    void chrome.runtime.lastError;
+    // Reading lastError marks it as handled, which the browser needs or it logs an unchecked runtime error. It also says
+    // why the port closed, which is what tells "not set up" from "not running".
+    const reason = chrome.runtime.lastError?.message ?? "";
     if (port !== closed) return;
     port = null;
     lastSent.clear();
     clearInterval(pingTimer);
     pingTimer = null;
+    setLink(linkFor(reason));
     scheduleReconnect();
   }
 
@@ -131,6 +180,7 @@ export function createBridge({
   function onHostMessage(message) {
     // Any answer means the Host is really there, so the next disconnect starts the retry gaps again.
     attempt = 0;
+    setLink("connected");
     if (!message || typeof message !== "object") return;
     if (message.type === "resync") {
       lastSent.clear();
@@ -145,11 +195,14 @@ export function createBridge({
     let opened;
     try {
       opened = chrome.runtime.connectNative(HOST_NAME);
-    } catch {
+    } catch (error) {
+      setLink(linkFor(error?.message ?? ""));
       scheduleReconnect();
       return;
     }
     port = opened;
+    // The port is open, but the browser only started the relay: nobody has answered until MosaicShell does.
+    setLink("waiting");
     opened.onMessage.addListener(onHostMessage);
     opened.onDisconnect.addListener(() => onDisconnect(opened));
     post({ type: "hello", protocol: PROTOCOL_VERSION, extensionVersion: version, browser });
@@ -162,6 +215,24 @@ export function createBridge({
     const tab = sender?.tab;
     if (!tab || !Number.isInteger(tab.id) || !isHttps(sender.origin)) return;
     upsert(tab, sender.origin, message.snapshot);
+  }
+
+  /**
+   * Only this extension's own pages may ask for the status. A content script carries our id too, but it runs in a web
+   * page, so its url is the website's; another extension has another id. (A tab has nothing to do with it: the popup
+   * has none, and an extension page opened in a tab does.)
+   */
+  function isOwnPage(sender) {
+    return sender?.id === chrome.runtime.id && typeof sender.url === "string" && sender.url.startsWith("chrome-extension://" + chrome.runtime.id + "/");
+  }
+
+  /** The toolbar popup asks for the status; a page's content script sends media and gets no answer. */
+  function onMessage(message, sender, sendResponse) {
+    if (message?.kind === "status") {
+      if (isOwnPage(sender)) sendResponse(status());
+      return;
+    }
+    onContentMessage(message, sender);
   }
 
   function onTabUpdated(tabId, changeInfo) {
@@ -201,7 +272,7 @@ export function createBridge({
 
   async function start() {
     // Listeners are registered before anything is awaited, as a service worker must.
-    chrome.runtime.onMessage.addListener(onContentMessage);
+    chrome.runtime.onMessage.addListener(onMessage);
     chrome.tabs.onRemoved.addListener(remove);
     chrome.tabs.onUpdated.addListener(onTabUpdated);
     chrome.alarms.onAlarm.addListener((alarm) => {
@@ -212,5 +283,5 @@ export function createBridge({
     await recover();
   }
 
-  return { start };
+  return { start, status };
 }

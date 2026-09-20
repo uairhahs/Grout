@@ -17,12 +17,22 @@ function makeEnv({ tabs = [], connectThrows = false, replies = {} } = {}) {
     listeners: { message: [], removed: [], updated: [], alarm: [] },
     lastError: undefined,
     lastErrorReads: 0,
+    badge: [],
+    title: undefined,
   };
 
   const event = (list) => ({ addListener: (fn) => list.push(fn) });
 
   env.chrome = {
+    action: {
+      setBadgeText: async (details) => env.badge.push(details.text),
+      setBadgeBackgroundColor: async () => {},
+      setTitle: async (details) => {
+        env.title = details.title;
+      },
+    },
     runtime: {
+      id: "grout-extension-id",
       get lastError() {
         env.lastErrorReads++;
         return env.lastError;
@@ -76,6 +86,12 @@ function makeEnv({ tabs = [], connectThrows = false, replies = {} } = {}) {
   });
 
   env.port = () => env.ports.at(-1);
+  /** What the toolbar popup gets when it asks the worker: a message from an extension page, which has no tab. */
+  env.status = (sender = { id: "grout-extension-id", url: "chrome-extension://grout-extension-id/popup.html" }) => {
+    let answer;
+    env.listeners.message.forEach((listener) => listener({ kind: "status" }, sender, (reply) => (answer = reply)));
+    return answer;
+  };
   env.fromTab = (
     message,
     tab = { id: 7, windowId: 3, audible: true },
@@ -529,5 +545,138 @@ describe("browser detection", () => {
       "chrome",
     );
     assert.equal(detectBrowser({ userAgent: "" }), "chrome");
+  });
+});
+
+describe("connection status, for the toolbar popup", () => {
+  const NOT_FOUND = "Specified native messaging host not found.";
+  const FORBIDDEN = "Access to the specified native messaging host is forbidden.";
+
+  it("starts as starting, before the worker has tried to connect", () => {
+    const env = makeEnv();
+
+    assert.equal(env.bridge.status().state, "starting");
+  });
+
+  it("is waiting once the port is open but MosaicShell has not answered", async () => {
+    const env = makeEnv();
+    await env.bridge.start();
+
+    assert.equal(env.status().state, "waiting");
+  });
+
+  it("is connected once MosaicShell answers, and not before", async () => {
+    const env = makeEnv();
+    await env.bridge.start();
+
+    env.port().emit({ type: "resync" });
+
+    assert.equal(env.status().state, "connected");
+  });
+
+  it("is unavailable when the browser says the host is not registered, whether it throws or disconnects", async () => {
+    const thrown = makeEnv({ connectThrows: true });
+    await thrown.bridge.start();
+    assert.equal(thrown.status().state, "unavailable");
+
+    const closed = makeEnv();
+    await closed.bridge.start();
+    closed.lastError = { message: NOT_FOUND };
+    closed.port().disconnect();
+    assert.equal(closed.status().state, "unavailable");
+  });
+
+  it("is refused when the browser says this extension may not talk to the host", async () => {
+    const env = makeEnv();
+    await env.bridge.start();
+    env.lastError = { message: FORBIDDEN };
+
+    env.port().disconnect();
+
+    assert.equal(env.status().state, "refused");
+  });
+
+  it("is waiting again when the relay exits, and connected when it comes back and answers", async () => {
+    const env = makeEnv();
+    await env.bridge.start();
+    env.port().emit({ type: "resync" });
+    env.lastError = { message: "Native host has exited." };
+
+    env.port().disconnect();
+    assert.equal(env.status().state, "waiting");
+
+    await env.timers.advance(2000);
+    env.port().emit({ type: "resync" });
+    assert.equal(env.status().state, "connected");
+  });
+
+  it("puts a badge on the toolbar button when the user has to act, and clears it once connected", async () => {
+    const env = makeEnv();
+    await env.bridge.start();
+    env.lastError = { message: NOT_FOUND };
+    env.port().disconnect();
+    assert.equal(env.badge.at(-1), "!", "the host is not set up: the user has to act");
+
+    env.lastError = undefined;
+    await env.timers.advance(2000);
+    env.port().emit({ type: "resync" });
+
+    assert.equal(env.badge.at(-1), "", "MosaicShell answered, so there is nothing left to do");
+  });
+
+  it("does not badge a MosaicShell that is simply not running", async () => {
+    const env = makeEnv();
+    await env.bridge.start();
+
+    assert.ok(!env.badge.includes("!"), "waiting is not an error");
+    env.port().emit({ type: "resync" });
+    assert.equal(env.badge.at(-1) ?? "", "");
+  });
+
+  it("badges a refused extension, since nothing will work until it is fixed", async () => {
+    const env = makeEnv();
+    await env.bridge.start();
+    env.lastError = { message: FORBIDDEN };
+
+    env.port().disconnect();
+
+    assert.equal(env.badge.at(-1), "!");
+  });
+
+  it("tells the popup what each tab is reporting, and drops it when the tab goes", async () => {
+    const env = makeEnv();
+    await env.bridge.start();
+    env.fromTab({ kind: "media", snapshot: { title: "Humid", artist: "Moody Good", album: "", artwork: [], playbackState: "playing" } });
+
+    const [tab] = env.status().sessions;
+    assert.deepEqual(tab, { tabId: 7, origin: "https://music.youtube.com", title: "Humid", artist: "Moody Good", playbackState: "playing" });
+
+    env.listeners.removed.forEach((l) => l(7));
+    assert.deepEqual(env.status().sessions, []);
+  });
+
+  it("carries the extension id, which is what MosaicShell has to allow", () => {
+    assert.equal(makeEnv().bridge.status().extensionId, "grout-extension-id");
+  });
+
+  it("answers the extension's own pages, whether the popup or a page opened in a tab", async () => {
+    const env = makeEnv();
+    await env.bridge.start();
+
+    const popup = { id: "grout-extension-id", url: "chrome-extension://grout-extension-id/popup.html" };
+    const inATab = { ...popup, tab: { id: 3 } };
+    assert.equal(env.status(popup).state, "waiting");
+    assert.equal(env.status(inATab).state, "waiting");
+  });
+
+  it("does not answer a web page's script, which carries the extension's id but the website's address, or another extension", async () => {
+    const env = makeEnv();
+    await env.bridge.start();
+
+    assert.equal(env.status({ id: "grout-extension-id", tab: { id: 3 }, url: "https://music.youtube.com/watch?v=x" }), undefined);
+    assert.equal(env.status({ id: "some-other-extension", url: "chrome-extension://some-other-extension/popup.html" }), undefined);
+    assert.equal(env.status({ id: "grout-extension-id", url: "chrome-extension://some-other-extension/popup.html" }), undefined, "the id and the address must agree");
+    assert.equal(env.status({ id: "grout-extension-id" }), undefined, "no address at all");
+    assert.equal(env.status({}), undefined);
   });
 });
