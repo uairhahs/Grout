@@ -1,0 +1,49 @@
+{
+  "manifest_version": 3,
+  "name": "Grout",
+  "version": "0.1.0",
+  "description": "Tells MosaicShell what your browser is playing: title, artist, cover, and like and dislike on YouTube Music. It talks only to MosaicShell on this computer.",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1VbLQADO4dbV9Yxq3MZPANwJm/r6inBQl2c9lz3eUpsGi0tYRdrBTetA4trpvUKD2yLZf4cuVSGzZwUIvhwExfI/WMn2jxbmuaUk2ekxLFAzQpl/3C24pqtNk4kJplEjbORa+GrNmW6MWmf/WAKWLGO86czk1Lu4Fjx37LR4r8qrTiAdDhX/8iYl9PVMBm7Xkz0Q4hQO4lzyIrjznqehP4CzB+N642e8rgy1SR+kFZS+Ymk6tPW+YMsip4bpQ85Zoq7iuHwtTRQ9vo+D0LcjgUPpb3CcIXZkfR0vEXc1nt8/46HmCIdaIHUfmEZuRSQx+PfhZbdfyEEnlR4e9ikSnQIDAQAB",
+  "minimum_chrome_version": "116",
+  "permissions": [
+    "nativeMessaging",
+    "alarms"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://music.youtube.com/*",
+        "https://www.youtube.com/*",
+        "https://open.spotify.com/*",
+        "https://soundcloud.com/*"
+      ],
+      "js": [
+        "page.js"
+      ],
+      "world": "MAIN",
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://music.youtube.com/*",
+        "https://www.youtube.com/*",
+        "https://open.spotify.com/*",
+        "https://soundcloud.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

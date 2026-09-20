@@ -1,0 +1,60 @@
+name: Release extension
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to receive the CRX
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag || github.ref }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test and build extension
+        run: npm test
+
+      - name: Set up Chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
+      - name: Write signing key
+        env:
+          EXTENSION_PRIVATE_KEY: ${{ secrets.EXTENSION_PRIVATE_KEY }}
+        run: printf '%s\n' "$EXTENSION_PRIVATE_KEY" > extension.pem
+
+      - name: Create CRX
+        run: google-chrome --headless --no-sandbox --pack-extension="$PWD/dist" --pack-extension-key="$PWD/extension.pem"
+
+      - name: Upload CRX to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$RELEASE_TAG" dist.crx --clobber
+
+      - name: Remove signing key
+        if: always()
+        run: rm -f extension.pem

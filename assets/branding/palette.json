@@ -1,0 +1,13 @@
+{
+  "source": "MosaicShell logo, sampled from .github/res/MosaicShell.png in the MosaicShell repository",
+  "tagline": "Your desktop, composed.",
+  "colors": {
+    "sky": "#67B8E7",
+    "indigo": "#5B62E6",
+    "violet": "#9D14E6",
+    "green": "#5BE077",
+    "olive": "#BBB555",
+    "amber": "#B48331",
+    "night": "#0E0231"
+  }
+}

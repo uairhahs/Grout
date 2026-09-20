@@ -1,0 +1,18 @@
+{
+  "name": "grout",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Browser extension that tells MosaicShell what the browser is playing.",
+  "license": "GPL-3.0-or-later",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "node scripts/build.mjs && node --test \"test/*.test.mjs\""
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.290",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.6.0"
+  }
+}
