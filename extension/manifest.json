@@ -9,6 +9,16 @@
     "48": "icons/icon-48.png",
     "128": "icons/icon-128.png"
   },
+  "action": {
+    "default_title": "Grout",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyp3Z+/QVXNiiztMouk0624GxcCLpUOk6hdTk7Bk7g38pujcLNpKT4VbT4TcwepLbrksae+kaN0rVSG4qiHsDu8kU0HhWtYbbTmjx3X6NEGUdNio1Srg3KuMzz5OsVSzl7A/3b9+kqhXVknEQn1Fiu+xA8c0Y8Ber25DfnW59LVL2jJUygcgjZZD00zlmj/rnHtRWMftId9b6YL6VW/nTAMm2z97VmtNlNcbnb6yODanRIy3Nxc3G3AAoPkhsR7m+bLv037fWgciDPtUxCV3UmOidGqQ3PRVRrgQkw5a45MH6DyEreHt6LVd4uOPzuua/psrMf1ppl53aWdoq+tqh1wIDAQAB",
   "minimum_chrome_version": "116",
   "permissions": [

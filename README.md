@@ -45,6 +45,20 @@ pressed and the buttons are not offered for that moment: a button that is alread
 
 Other sites report what is playing and nothing more, until their buttons have been measured.
 
+## The toolbar popup
+
+Click Grout's icon to see whether it is working. The dot says how the link to MosaicShell is doing:
+
+- **Green, connected.** MosaicShell answered. If the tab you are on is playing, the popup shows what Grout is reporting
+  for it.
+- **Blue, waiting.** MosaicShell is not running. Start it; Grout connects by itself and keeps trying.
+- **Amber, needs you.** Either MosaicShell has not registered Grout's connection yet (start MosaicShell once), or it
+  does not trust this copy because the extension ID is not the one it allows (install Grout from a release, or update
+  MosaicShell). The popup shows the extension ID for exactly this case, and the icon carries a `!` badge until it is
+  fixed.
+
+The popup adds no permission and shows only what Grout already sends to MosaicShell on your own computer.
+
 ## Privacy
 
 - Nothing is sent for a tab that plays nothing.

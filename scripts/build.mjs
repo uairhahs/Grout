@@ -14,7 +14,11 @@ await Promise.all([
   build({ ...common, entryPoints: { content: "src/content/content.ts" }, outdir: "dist", format: "iife" }),
   // The service worker is declared as a module.
   build({ ...common, entryPoints: { background: "src/background/background.js" }, outdir: "dist", format: "esm" }),
+  // The toolbar popup's script; its page and stylesheet are copied as they are below.
+  build({ ...common, entryPoints: { popup: "src/popup/popup.ts" }, outdir: "dist", format: "iife" }),
 ]);
+fs.copyFileSync("src/popup/popup.html", "dist/popup.html");
+fs.copyFileSync("src/popup/popup.css", "dist/popup.css");
 
 // A release stamps its version into the packaged manifest (see scripts/version.mjs); the source manifest never changes.
 const manifest = JSON.parse(fs.readFileSync("extension/manifest.json", "utf8"));

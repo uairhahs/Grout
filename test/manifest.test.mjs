@@ -61,9 +61,36 @@ describe("manifest", () => {
 
   it("names every file it refers to, and the build produces them", () => {
     const dist = path.join(root, "dist");
-    const referenced = [manifest.background.service_worker, ...manifest.content_scripts.flatMap((s) => s.js)];
+    const referenced = [manifest.background.service_worker, manifest.action.default_popup, ...manifest.content_scripts.flatMap((s) => s.js)];
     for (const file of referenced) assert.ok(fs.existsSync(path.join(dist, file)), `${file} (run npm run build)`);
     assert.ok(fs.existsSync(path.join(dist, "manifest.json")));
+  });
+});
+
+describe("the toolbar popup", () => {
+  const dist = path.join(root, "dist");
+  const html = () => fs.readFileSync(path.join(dist, manifest.action.default_popup), "utf8");
+
+  it("is declared, so clicking the icon shows something, and needs no permission of its own", () => {
+    assert.equal(manifest.action.default_popup, "popup.html");
+    assert.equal(manifest.action.default_title, "Grout");
+    assert.deepEqual([...manifest.permissions].sort(), ["alarms", "nativeMessaging"]);
+  });
+
+  it("loads only files from the package: no remote script, style, font or image, and no inline script", () => {
+    const page = html();
+    assert.doesNotMatch(page, /(?:src|href)\s*=\s*["'](?:https?:)?\/\//i, "a remote resource");
+    assert.doesNotMatch(page, /<script(?![^>]*\ssrc=)[^>]*>/i, "an inline script, which the extension policy forbids");
+    for (const [, reference] of page.matchAll(/(?:src|href)\s*=\s*"([^"]+)"/g)) {
+      assert.ok(fs.existsSync(path.join(dist, reference)), `${reference} is missing from the package`);
+    }
+    assert.doesNotMatch(fs.readFileSync(path.join(dist, "popup.css"), "utf8"), /url\(\s*["']?(?:https?:)?\/\//i, "a remote resource in the stylesheet");
+  });
+
+  it("puts what it is told on the page as text, never as markup", () => {
+    const script = fs.readFileSync(path.join(root, "src", "popup", "popup.ts"), "utf8");
+    assert.doesNotMatch(script, /innerHTML|outerHTML|insertAdjacentHTML|document\.write/, "a track title is the page's to choose");
+    assert.match(script, /textContent/);
   });
 });
 
