@@ -7,6 +7,7 @@
   "license": "GPL-3.0-or-later",
   "scripts": {
     "build": "node scripts/build.mjs",
+    "package:store": "node scripts/build.mjs && node scripts/store-package.mjs dist store",
     "typecheck": "tsc --noEmit",
     "test": "node scripts/build.mjs && node --test \"test/*.test.mjs\""
   },
