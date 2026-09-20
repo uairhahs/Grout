@@ -61,14 +61,14 @@ Other sites report what is playing and nothing more, until their buttons have be
    folder.
 3. Reload any tab that was already playing; a content script only runs in pages loaded after it.
 
-The manifest has a fixed key, so an unpacked copy always has the ID `bihchkjghodeabekphdfjlaafoibnmmc`, which is the
+The manifest has a fixed key, so an unpacked copy always has the ID `aaffcapodpfecchmelidkkhgiaamijpe`, which is the
 ID MosaicShell's native host manifest allows. A store listing gets its own ID, which MosaicShell adds when it exists.
 
 ## Develop
 
 ```text
 npm install
-npm test          # builds, then runs the tests (Node 22 or later)
+npm test          # builds, then runs the tests (Node 22 or later; CI runs Node 24)
 npm run typecheck
 ```
 
@@ -102,11 +102,27 @@ git switch -c feature/<name>
 
 ## Release
 
-Publishing a GitHub release runs `.github/workflows/release.yml`, which builds and tests the extension, creates
-`dist.crx`, and uploads it to the release. The repository must have an Actions secret named `EXTENSION_PRIVATE_KEY`
-containing the PEM private key that matches the public `key` in `extension/manifest.json`; using another key changes
-the extension ID and prevents MosaicShell from accepting messages from the package. The workflow can also be run
-manually for an existing release tag.
+Every push to `main` runs `.github/workflows/release.yml`, the same way MosaicShell's release workflow does. It
+typechecks and tests the extension, builds it, signs a CRX, and publishes a GitHub release with:
+
+- `Grout-<version>.zip`, the package to load unpacked, and `Grout-<version>.crx`, the same package signed;
+- `Grout.zip` and `Grout.crx`, the same files under names that never change;
+- `SHA256SUMS.txt`.
+
+**Versions** follow MosaicShell's date-build scheme, `yyyy.M.d-b{run_number}` (UTC date, no zero padding), which is
+also the release tag. A browser's manifest `version` accepts only dot-separated integers, so the packaged manifest
+gets `version` `yyyy.M.d.{run_number}` for the browser to compare and `version_name` `yyyy.M.d-b{run_number}` for
+people to read. The source manifest is never edited. See `scripts/version.mjs`.
+
+**Signing.** The repository needs an Actions secret named `EXTENSION_PRIVATE_KEY` holding the PEM private key that
+matches the public `key` in `extension/manifest.json`. That key fixes the extension ID, which MosaicShell's native
+host allows, so it must never change and must never be committed (`*.pem` and `*.crx` are ignored). Before anything is
+published the workflow reads the ID out of the signed CRX and fails unless it equals the ID derived from the manifest
+key (`scripts/verify-crx.mjs`), so a missing or wrong secret stops the run and does not ship a package MosaicShell
+would refuse. Back the key up: losing it means a new extension ID and a change in MosaicShell.
+
+**Trying it without publishing.** Run the workflow by hand from the Actions tab and untick `publish`. It builds, signs and
+verifies the package and keeps it as a workflow artifact only.
 
 ## Branding
 

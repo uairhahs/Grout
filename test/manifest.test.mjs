@@ -34,7 +34,7 @@ describe("manifest", () => {
 
   it("has a fixed key, so the unpacked extension has the ID that MosaicShell's native host manifest allows", () => {
     // MosaicShell lists this ID in NativeHostRegistration.AllowedExtensionIds; change both together.
-    assert.equal(idFromKey(manifest.key), "bihchkjghodeabekphdfjlaafoibnmmc");
+    assert.equal(idFromKey(manifest.key), "aaffcapodpfecchmelidkkhgiaamijpe");
   });
 
   it("asks for as little as it can: the native host and a keepalive alarm, nothing else", () => {

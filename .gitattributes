@@ -1,0 +1,4 @@
+# The GNU license text says changing it is not allowed, and a test checks its SHA-256, so its bytes must never be
+# rewritten by line-ending conversion on checkout. The copied notice below it is compared byte for byte the same way.
+LICENSE -text
+test/fixtures/mit-notice.txt -text
