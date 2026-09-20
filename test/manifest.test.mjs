@@ -5,6 +5,7 @@ import path from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import { idFromKey } from "../scripts/extension-id.mjs";
+import { decodeRgbaPng, opaqueBounds } from "./png.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const manifest = JSON.parse(fs.readFileSync(path.join(root, "extension", "manifest.json"), "utf8"));
@@ -120,10 +121,20 @@ describe("branding", () => {
     }
   });
 
-  it("uses MosaicShell's own artwork for the sizes the brand has, byte for byte", () => {
-    for (const [icon, original] of [["icon-16.png", "micro-16.png"], ["icon-32.png", "compact-32.png"], ["icon-128.png", "compact-128.png"]]) {
+  it("uses MosaicShell's own artwork for the small sizes, byte for byte", () => {
+    for (const [icon, original] of [["icon-16.png", "micro-16.png"], ["icon-32.png", "compact-32.png"]]) {
       assert.ok(fs.readFileSync(path.join(root, "extension", "icons", icon)).equals(fs.readFileSync(path.join(branding, original))), icon);
     }
+  });
+
+  it("keeps the 128 icon's artwork within 96 x 96, centred, with 16 pixels of transparent padding all round, as the stores ask", () => {
+    const icon = decodeRgbaPng(fs.readFileSync(path.join(root, "extension", "icons", "icon-128.png")));
+    const { left, top, right, bottom } = opaqueBounds(icon);
+
+    assert.deepEqual([icon.width, icon.height], [128, 128]);
+    assert.ok(left >= 16 && top >= 16 && right <= 112 && bottom <= 112, `the artwork spans x ${left}-${right}, y ${top}-${bottom}; it must stay inside 16-112`);
+    assert.equal(Math.max(right - left, bottom - top), 96, "the longer side should use the whole 96, or the icon looks smaller than it needs to");
+    assert.ok(Math.abs(left - (128 - right)) <= 1 && Math.abs(top - (128 - bottom)) <= 1, "the artwork should be centred");
   });
 
   it("keeps the palette in one place: the notes list exactly the colours the palette file defines", () => {
