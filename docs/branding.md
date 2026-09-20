@@ -20,8 +20,17 @@ Files in `assets/branding/`, all copied byte for byte from MosaicShell:
 | `monochrome-dark-*.png`, `monochrome-white-*.png` | One-colour versions for light and dark surfaces |
 | `favicon.ico`                             | A site or documentation favicon                        |
 
-The extension's own icons are in `extension/icons/`: 16, 32 and 128 are the brand's `micro-16`, `compact-32` and
-`compact-128`, and 48 is the 128 scaled down, because the brand has no 48.
+The extension's own icons are in `extension/icons/`: 16 and 32 are the brand's `micro-16` and `compact-32`, and 48 is
+the brand's `compact-128` scaled down, because the brand has no 48.
+
+The 128 icon is the exception. The Chrome Web Store and Edge Add-ons ask for artwork no bigger than 96 x 96 with 16
+pixels of transparent padding on every side, and the brand's own 128 fills nearly the whole canvas. So
+`icon-128.png` is the master artwork scaled to 96 pixels on its longer side and centred on a transparent 128 x 128
+canvas, made by `uv run scripts/make-icon-128.py`. It is the same mark, not recoloured, and a test measures the
+padding. Use this file for the store listing's icon too.
+
+On a very dark background the centre diamond (Night) sits next to the gaps between tiles, which show the background,
+so it loses some contrast there. That comes from the mark itself and is not changed here.
 
 ## Palette
 

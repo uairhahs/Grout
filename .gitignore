@@ -4,3 +4,6 @@ store/
 *.zip
 *.crx
 *.pem
+
+# Ignore local environment files
+.local
