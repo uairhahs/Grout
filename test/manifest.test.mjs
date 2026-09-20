@@ -4,15 +4,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
+import { idFromKey } from "../scripts/extension-id.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const manifest = JSON.parse(fs.readFileSync(path.join(root, "extension", "manifest.json"), "utf8"));
-
-/** The extension ID a browser derives from the manifest key: 32 letters a to p from a SHA-256 of the public key. */
-function idFromKey(key) {
-  const digest = crypto.createHash("sha256").update(Buffer.from(key, "base64")).digest().subarray(0, 16);
-  return [...digest].map((b) => String.fromCharCode(97 + (b >> 4)) + String.fromCharCode(97 + (b & 15))).join("");
-}
 
 function* files(dir, extensions) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {

@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
-import { crxId } from "../scripts/crx-id.mjs";
+import { fileURLToPath } from "node:url";
+import { idFromKey, idOfManifest } from "../scripts/extension-id.mjs";
 import { manifestVersions, releaseTag } from "../scripts/version.mjs";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 describe("the release tag", () => {
   it("is MosaicShell's date-build form: the UTC date without zero padding, then -b and the run number", () => {
@@ -41,46 +45,29 @@ describe("the versions stamped into the manifest", () => {
   });
 });
 
-describe("reading the extension ID from a CRX3 file", () => {
-  const varint = (n) => {
-    const out = [];
-    while (n > 0x7f) {
-      out.push((n & 0x7f) | 0x80);
-      n = Math.floor(n / 128);
+describe("the extension ID", () => {
+  it("is derived from the manifest key the way a browser does it: 32 letters a to p", () => {
+    const id = idOfManifest(path.join(root, "extension", "manifest.json"));
+
+    assert.match(id, /^[a-p]{32}$/);
+    const manifest = JSON.parse(fs.readFileSync(path.join(root, "extension", "manifest.json"), "utf8"));
+    assert.equal(id, idFromKey(manifest.key));
+  });
+
+  it("matches an independent calculation: the first 32 hex digits of the key's SHA-256, each shifted onto a to p", () => {
+    for (const bytes of ["hello", "another key", "\u0000\u0001\u0002"]) {
+      const hex = crypto.createHash("sha256").update(Buffer.from(bytes, "latin1")).digest("hex").slice(0, 32);
+      const expected = [...hex].map((digit) => String.fromCharCode("a".charCodeAt(0) + parseInt(digit, 16))).join("");
+
+      assert.equal(idFromKey(Buffer.from(bytes, "latin1").toString("base64")), expected, JSON.stringify(bytes));
     }
-    return Buffer.from([...out, n]);
-  };
-  const lengthDelimited = (number, body) => Buffer.concat([varint(number * 8 + 2), varint(body.length), body]);
-
-  /** A CRX3 file with the given header bytes and a stand-in payload. */
-  function crx(header, { magic = "Cr24", version = 3 } = {}) {
-    const head = Buffer.alloc(12);
-    head.write(magic, 0, "latin1");
-    head.writeUInt32LE(version, 4);
-    head.writeUInt32LE(header.length, 8);
-    const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "grout-crx-")), "test.crx");
-    fs.writeFileSync(file, Buffer.concat([head, header, Buffer.from("PK-zip-payload")]));
-    return file;
-  }
-
-  const id = Buffer.from("00112233445566778899aabbccddeeff", "hex");
-  const header = Buffer.concat([
-    lengthDelimited(2, Buffer.from("a signature proof the reader must skip over")),
-    lengthDelimited(10000, lengthDelimited(1, id)),
-  ]);
-
-  it("turns the 16-byte crx_id into the 32 letters a to p that a browser shows", () => {
-    assert.equal(crxId(crx(header)), "aabbccddeeffgghhiijjkkllmmnnoopp");
   });
 
-  it("skips the fields around it, in either order", () => {
-    const reversed = Buffer.concat([lengthDelimited(10000, lengthDelimited(1, id)), lengthDelimited(2, Buffer.from("proof"))]);
-    assert.equal(crxId(crx(reversed)), "aabbccddeeffgghhiijjkkllmmnnoopp");
-  });
+  it("refuses a manifest with no key, which would give the package a random ID", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "grout-id-"));
+    const file = path.join(dir, "manifest.json");
+    fs.writeFileSync(file, JSON.stringify({ manifest_version: 3, name: "x", version: "1" }));
 
-  it("refuses a file that is not a CRX3, or has no id", () => {
-    assert.throws(() => crxId(crx(header, { magic: "PK\u0003\u0004" })), /not a CRX/);
-    assert.throws(() => crxId(crx(header, { version: 2 })), /CRX3/);
-    assert.throws(() => crxId(crx(lengthDelimited(2, Buffer.from("proof")))), /crx_id/);
+    assert.throws(() => idOfManifest(file), /no key/);
   });
 });
