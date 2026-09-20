@@ -120,7 +120,8 @@ Every push to `main` runs `.github/workflows/release.yml`, the same way MosaicSh
 typechecks and tests the extension, builds it, and publishes a GitHub release with:
 
 - `Grout-<version>.zip`, the package to load unpacked;
-- `Grout.zip`, the same file under a name that never changes;
+- `Grout-<version>-store.zip`, the same package without the manifest `key`, to upload to a browser store;
+- `Grout.zip`, the first zip under a name that never changes;
 - `SHA256SUMS.txt`.
 
 There is no `.crx`. Edge and Chrome install a `.crx` only if their own store has signed it, so one signed with Grout's
@@ -139,6 +140,21 @@ people to read. The source manifest is never edited. See `scripts/version.mjs`.
 that ID, so the key must never change. Nothing needs the matching private key: releases are plain zips and the stores
 sign their own packages. `scripts/extension-id.mjs` derives the ID from the manifest, the tests check it, and the
 release notes state it.
+
+**Uploading to a store.** The Chrome Web Store and Edge Add-ons refuse a manifest with a `key` ("key field is not
+allowed in manifest") and a `description` over 132 characters. Upload the `-store.zip` (or run `npm run package:store`
+and zip the `store` folder). `scripts/store-package.mjs` makes it and fails the build if the name or description is over
+what a store accepts, and a test keeps the source manifest inside those limits.
+
+A store picks the listing's extension ID itself, so it will not be the unpacked one above. After the first upload:
+
+1. Open the item's **Package** tab in the developer dashboard, choose **View public key**, and put that key in
+   `extension/manifest.json` as `key`. Unpacked copies then get the store's ID too, and there is one ID to trust.
+2. Update the pinned ID in `test/manifest.test.mjs`.
+3. Add the store's ID to `AllowedExtensionIds` in MosaicShell's `NativeHostRegistration`. Edge Add-ons assigns a
+   different ID from Chrome's, so each store's ID is added separately.
+
+Each upload needs a higher `version` than the last; the date-build `version` from a release always is.
 
 **Trying it without publishing.** Run the workflow by hand from the Actions tab and untick `publish`. It builds and
 packages the extension and keeps the zip as a workflow artifact only.
