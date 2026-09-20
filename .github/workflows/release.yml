@@ -69,13 +69,22 @@ jobs:
           TAG: ${{ steps.tag.outputs.name }}
         run: (cd dist && zip -r -X "../Grout-$TAG.zip" .)
 
+      - name: Package the copy for the browser stores
+        env:
+          TAG: ${{ steps.tag.outputs.name }}
+        run: |
+          # The same package without the manifest key, which the Chrome Web Store and Edge Add-ons refuse on a new item.
+          # The script also fails the build if the name or description is over what a store accepts.
+          node scripts/store-package.mjs dist store
+          (cd store && zip -r -X "../Grout-$TAG-store.zip" .)
+
       - name: Compute release checksums
         env:
           TAG: ${{ steps.tag.outputs.name }}
         run: |
           # A stable name beside the versioned one, so a link to the latest release never needs the version in it.
           cp "Grout-$TAG.zip" Grout.zip
-          sha256sum "Grout-$TAG.zip" Grout.zip > SHA256SUMS.txt
+          sha256sum "Grout-$TAG.zip" "Grout-$TAG-store.zip" Grout.zip > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
       - name: Keep the package as a workflow artifact
@@ -84,6 +93,7 @@ jobs:
           name: Grout-${{ steps.tag.outputs.name }}
           path: |
             Grout-${{ steps.tag.outputs.name }}.zip
+            Grout-${{ steps.tag.outputs.name }}-store.zip
             SHA256SUMS.txt
           if-no-files-found: error
 
@@ -105,11 +115,13 @@ jobs:
 
           Extension ID: \`$id\`
 
+          **Grout-$TAG-store.zip** is for uploading to the Chrome Web Store or Edge Add-ons. It is the same package without the manifest key, which a store refuses; the store gives the listing its own extension ID.
+
           ## Verify
           **SHA256SUMS.txt** lists the SHA-256 of every asset. To check by hand: \`sha256sum -c SHA256SUMS.txt\`.
           EOF
 
-          gh release create "$TAG" "Grout-$TAG.zip" Grout.zip SHA256SUMS.txt \
+          gh release create "$TAG" "Grout-$TAG.zip" "Grout-$TAG-store.zip" Grout.zip SHA256SUMS.txt \
             --title "Grout $TAG" \
             --notes-file notes.md \
             --prerelease \
