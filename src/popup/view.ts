@@ -31,7 +31,7 @@ const COPY: Record<Exclude<Link, "connected">, { tone: Tone; heading: string; bo
   refused: {
     tone: "attention",
     heading: "MosaicShell does not trust this copy of Grout",
-    body: "MosaicShell only accepts the Grout it was built for. Install Grout from the release page, or update MosaicShell.",
+    body: "MosaicShell only accepts the Grout it was built for. Install Grout from the Chrome Web Store, or update MosaicShell.",
   },
 };
 

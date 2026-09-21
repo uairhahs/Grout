@@ -28,9 +28,9 @@ describe("manifest", () => {
     assert.equal(manifest.background.type, "module");
   });
 
-  it("has a fixed key, so the unpacked extension has the ID that MosaicShell's native host manifest allows", () => {
+  it("has the store listing's key, so an unpacked copy has the ID the Chrome Web Store gave Grout and MosaicShell allows", () => {
     // MosaicShell lists this ID in NativeHostRegistration.AllowedExtensionIds; change both together.
-    assert.equal(idFromKey(manifest.key), "aaffcapodpfecchmelidkkhgiaamijpe");
+    assert.equal(idFromKey(manifest.key), "pcjkacalabdgejinbmfdejicfhlonnpf");
   });
 
   it("fits what the browser stores accept: a name up to 75 characters and a description up to 132", () => {
