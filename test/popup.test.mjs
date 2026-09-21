@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { describeStatus } from "../src/popup/view.ts";
 
 const session = (over = {}) => ({ tabId: 7, origin: "https://music.youtube.com", title: "Humid", artist: "Moody Good", playbackState: "playing", ...over });
-const status = (state, over = {}) => ({ state, extensionId: "aaffcapodpfecchmelidkkhgiaamijpe", sessions: [], ...over });
+const status = (state, over = {}) => ({ state, extensionId: "pcjkacalabdgejinbmfdejicfhlonnpf", sessions: [], ...over });
 
 describe("what the popup says about the link to MosaicShell", () => {
   it("is good news when connected, and says what Grout reads when this tab plays nothing", () => {
@@ -51,8 +51,10 @@ describe("what the popup says about the link to MosaicShell", () => {
 
     assert.equal(view.tone, "attention");
     assert.equal(view.heading, "MosaicShell does not trust this copy of Grout");
-    assert.match(view.body, /release page|update MosaicShell/);
-    assert.equal(view.extensionId, "aaffcapodpfecchmelidkkhgiaamijpe");
+    assert.match(view.body, /Chrome Web Store/, "the store listing is the way to get the copy MosaicShell allows");
+    assert.match(view.body, /update MosaicShell/);
+    assert.doesNotMatch(view.body, /release page/);
+    assert.equal(view.extensionId, "pcjkacalabdgejinbmfdejicfhlonnpf");
   });
 
   it("does not show a track while nothing is connected to show it to", () => {
