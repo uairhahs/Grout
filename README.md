@@ -53,8 +53,8 @@ Click Grout's icon to see whether it is working. The dot says how the link to Mo
   for it.
 - **Blue, waiting.** MosaicShell is not running. Start it; Grout connects by itself and keeps trying.
 - **Amber, needs you.** Either MosaicShell has not registered Grout's connection yet (start MosaicShell once), or it
-  does not trust this copy because the extension ID is not the one it allows (install Grout from a release, or update
-  MosaicShell). The popup shows the extension ID for exactly this case, and the icon carries a `!` badge until it is
+  does not trust this copy because the extension ID is not the one it allows (install Grout from the Chrome Web Store,
+  or update MosaicShell). The popup shows the extension ID for exactly this case, and the icon carries a `!` badge until it is
   fixed.
 
 The popup adds no permission and shows only what Grout already sends to MosaicShell on your own computer.
@@ -72,13 +72,18 @@ The full policy is [PRIVACY.md](PRIVACY.md). In short:
 
 1. Start MosaicShell once. It registers the native messaging host for the current user (Edge and Chrome) and needs
    no administrator rights.
-2. Install Grout. Until it is listed in the browser stores: run `npm install` and `npm run build`, open
-   `edge://extensions` (or `chrome://extensions`), turn on Developer mode, choose Load unpacked, and pick the `dist`
-   folder.
+2. Install Grout from its [Chrome Web Store listing](https://chromewebstore.google.com/detail/grout/pcjkacalabdgejinbmfdejicfhlonnpf).
+   Chrome installs it directly. Edge installs it from the same page once you allow extensions from other stores, and
+   it keeps the same ID.
 3. Reload any tab that was already playing; a content script only runs in pages loaded after it.
 
-The manifest has a fixed key, so an unpacked copy always has the ID `aaffcapodpfecchmelidkkhgiaamijpe`, which is the
-ID MosaicShell's native host manifest allows. A store listing gets its own ID, which MosaicShell adds when it exists.
+To install a build from source instead, run `npm install` and `npm run build`, open `edge://extensions` (or
+`chrome://extensions`), turn on Developer mode, choose Load unpacked, and pick the `dist` folder.
+
+The manifest carries the store listing's public key, so a build loaded unpacked has the same ID as the store copy,
+`pcjkacalabdgejinbmfdejicfhlonnpf`, which is the ID MosaicShell's native host manifest allows. An unpacked copy built
+before the store listing existed has the older ID `aaffcapodpfecchmelidkkhgiaamijpe`, which MosaicShell still allows.
+A copy with any other ID is refused.
 
 ## Develop
 
@@ -129,32 +134,33 @@ typechecks and tests the extension, builds it, and publishes a GitHub release wi
 There is no `.crx`. Edge and Chrome install a `.crx` only if their own store has signed it, so one signed with Grout's
 own key is refused with `Package is invalid: 'CRX_REQUIRED_PROOF_MISSING'` however valid it is, and only enterprise
 policy could deploy one, which is not what Grout is for. To install Grout by hand use the zip and Load unpacked; the
-browser then shows a developer-mode notice when it starts. Once Grout is listed in the Edge Add-ons or Chrome Web
-Store, that listing is the one-click route, and the store's extension ID must then be added to MosaicShell's
-`AllowedExtensionIds`.
+browser then shows a developer-mode notice when it starts. The
+[Chrome Web Store listing](https://chromewebstore.google.com/detail/grout/pcjkacalabdgejinbmfdejicfhlonnpf) is the
+one-click route, and its ID is in MosaicShell's `AllowedExtensionIds`. A listing in any other store gets its own ID,
+which must be added there before that copy is trusted.
 
 **Versions** follow MosaicShell's date-build scheme, `yyyy.M.d-b{run_number}` (UTC date, no zero padding), which is
 also the release tag. A browser's manifest `version` accepts only dot-separated integers, so the packaged manifest
 gets `version` `yyyy.M.d.{run_number}` for the browser to compare and `version_name` `yyyy.M.d-b{run_number}` for
 people to read. The source manifest is never edited. See `scripts/version.mjs`.
 
-**The extension ID** is fixed by the public `key` in `extension/manifest.json`. MosaicShell's native host allows exactly
-that ID, so the key must never change. Nothing needs the matching private key: releases are plain zips and the stores
-sign their own packages. `scripts/extension-id.mjs` derives the ID from the manifest, the tests check it, and the
-release notes state it.
+**The extension ID** is fixed by the public `key` in `extension/manifest.json`, which is the Chrome Web Store listing's
+public key. MosaicShell's native host allows that ID, so the key must never change. The key is public and safe to keep
+in the repository, and nothing needs a private key: releases are plain zips and the stores sign their own packages.
+`scripts/extension-id.mjs` derives the ID from the manifest, the tests check it, and the release notes state it.
 
 **Uploading to a store.** The Chrome Web Store and Edge Add-ons refuse a manifest with a `key` ("key field is not
 allowed in manifest") and a `description` over 132 characters. Upload the `-store.zip` (or run `npm run package:store`
 and zip the `store` folder). `scripts/store-package.mjs` makes it and fails the build if the name or description is over
 what a store accepts, and a test keeps the source manifest inside those limits.
 
-A store picks the listing's extension ID itself, so it will not be the unpacked one above. After the first upload:
+A store picks the listing's extension ID itself. The Chrome Web Store listing is already done: its public key is the
+manifest's `key`, its ID is pinned in `test/manifest.test.mjs`, and MosaicShell allows it. For another store, such as
+Edge Add-ons, which assigns a different ID from Chrome's, after the first upload:
 
-1. Open the item's **Package** tab in the developer dashboard, choose **View public key**, and put that key in
-   `extension/manifest.json` as `key`. Unpacked copies then get the store's ID too, and there is one ID to trust.
-2. Update the pinned ID in `test/manifest.test.mjs`.
-3. Add the store's ID to `AllowedExtensionIds` in MosaicShell's `NativeHostRegistration`. Edge Add-ons assigns a
-   different ID from Chrome's, so each store's ID is added separately.
+1. Open the item's **Package** tab in the developer dashboard and choose **View public key**. Do not replace the
+   manifest's `key` with it: the manifest holds one key, and a second store's ID is added on the MosaicShell side only.
+2. Add that store's ID to `AllowedExtensionIds` in MosaicShell's `NativeHostRegistration`.
 
 Each upload needs a higher `version` than the last; the date-build `version` from a release always is.
 
