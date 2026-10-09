@@ -3,9 +3,13 @@
 
 const SITES = new Set(["music.youtube.com", "www.youtube.com", "open.spotify.com", "soundcloud.com"]);
 
-/** YouTube's embedded player pages are not a place anyone is listening to music from. */
+/**
+ * YouTube is read only where a video is the page. Its browsing pages (home, search, channels) play a muted preview when
+ * a thumbnail is hovered and publish that video's title to the Media Session, which would make every hover look like a
+ * track change. Embedded players are not a place anyone is listening from either.
+ */
 export function isSupported(location: { hostname: string; pathname: string }): boolean {
-  if (location.hostname === "www.youtube.com" && location.pathname.startsWith("/embed")) return false;
+  if (location.hostname === "www.youtube.com") return location.pathname.startsWith("/watch") || location.pathname.startsWith("/shorts");
   return SITES.has(location.hostname);
 }
 
