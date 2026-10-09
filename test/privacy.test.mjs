@@ -20,6 +20,7 @@ describe("the privacy policy", () => {
   it("names the sites the content scripts run on and describes the manifest host-access boundary", () => {
     for (const site of ["YouTube Music", "YouTube", "Spotify", "SoundCloud"]) assert.ok(privacy.includes(site), `PRIVACY.md does not name ${site}`);
     assert.equal(manifest.host_permissions, undefined);
+    assert.match(privacy, /only video pages \(`\/watch` and `\/shorts`\)/);
     assert.match(privacy, /no separate `host_permissions` entry/);
     assert.match(privacy, /host access under browser-store terminology/);
   });

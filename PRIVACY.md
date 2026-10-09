@@ -1,13 +1,15 @@
 # Grout privacy policy
 
-_Last updated 20 September 2026._
+_Last updated 9 October 2026._
 
 Grout is a browser extension that tells the MosaicShell desktop app, running on the same computer, what your browser
 is playing. It has no server, no account and no analytics. Nothing Grout reads leaves your computer.
 
 ## What Grout reads
 
-Only on YouTube Music, YouTube, Spotify (the web player) and SoundCloud, and only when a tab is playing media:
+Only on YouTube Music, YouTube, Spotify (the web player) and SoundCloud, and only when a tab is playing media. On
+YouTube, Grout reads only video pages (`/watch` and `/shorts`), not the home, search or channel pages, where hovering a
+thumbnail starts a preview that is not something you chose to play:
 
 - the track's title, artist and album, and the address of its cover image;
 - whether it is playing or paused, and whether the tab is making sound;

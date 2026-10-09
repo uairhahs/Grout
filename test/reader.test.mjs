@@ -72,9 +72,18 @@ describe("the rating", () => {
 
 describe("which pages are read", () => {
   it("reads the four supported sites", () => {
-    for (const hostname of ["music.youtube.com", "www.youtube.com", "open.spotify.com", "soundcloud.com"]) {
+    for (const hostname of ["music.youtube.com", "open.spotify.com", "soundcloud.com"]) {
       assert.equal(isSupported({ hostname, pathname: "/" }), true, hostname);
     }
+    assert.equal(isSupported({ hostname: "www.youtube.com", pathname: "/watch" }), true);
+    assert.equal(isSupported({ hostname: "www.youtube.com", pathname: "/shorts/abc" }), true);
+  });
+
+  it("reads YouTube only where a video is the page: browsing pages preview videos on hover and publish their titles", () => {
+    for (const pathname of ["/", "/results", "/feed/subscriptions", "/@channel", "/playlist"]) {
+      assert.equal(isSupported({ hostname: "www.youtube.com", pathname }), false, pathname);
+    }
+    assert.equal(isSupported({ hostname: "music.youtube.com", pathname: "/" }), true, "YouTube Music's home page is still read");
   });
 
   it("reads nothing else: look-alikes, other subdomains and embedded players", () => {
